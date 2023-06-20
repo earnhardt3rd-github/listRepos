@@ -11,6 +11,7 @@ namespace OctokitExample
     {
         static async Task Main(string[] args)
         {
+            string orgName = "earnhardt3rd-forks";
             var token = "UNKNOWN";
             var bDir = System.AppContext.BaseDirectory;
             var wDir = Path.GetFullPath(".");
@@ -59,9 +60,39 @@ namespace OctokitExample
             github.Credentials = new Credentials(token);
 
             var repos = await GetGithubRepositoryAsync(github);
+            StringComparison comp = StringComparison.OrdinalIgnoreCase;
             foreach (var repo in repos)
             {
-                Console.WriteLine(repo.FullName);
+                if (repo.FullName.Contains("skills",StringComparison.OrdinalIgnoreCase)) {
+                    Console.WriteLine("  SKILLS:{0}",repo.FullName);
+                    Console.WriteLine("  HURL:{0}",repo.HtmlUrl);
+                    string sOrg = "earnhardt3rd-github";
+                    string surl = repo.FullName;
+                    bool chk = repo.FullName.Contains(sOrg);
+                    Console.WriteLine("  BOOL:{0}",chk.ToString());
+                    if (chk == false) {
+                        await TransferRepoToOrg(github, repo, sOrg);
+                    } else {
+                        Console.WriteLine("  ** Repo:{0} ALREADY TRANSFERRED TO ORG:{1}!!!",repo.FullName,sOrg);
+                    }
+                    continue;
+                }
+                if (repo.Fork)
+                {
+                    Console.WriteLine("  FORKED:{0}",repo.FullName);
+                    Console.WriteLine("  Owner:{0}",repo.Owner);
+                    Console.WriteLine("  HtmlUrl:{0}",repo.HtmlUrl);
+                    
+                    string url = repo.HtmlUrl;
+                    if (url.Contains(orgName,comp)) {
+                        Console.WriteLine("  ** Repo:{0} ALREADY TRANSFERRED TO ORG:{1}!!!",repo.FullName,orgName);
+                    } else {
+                        await TransferRepoToOrg(github, repo, orgName);
+                        //Environment.Exit(0);
+                    }
+                } else {
+                    Console.WriteLine("  --NOT FORKED:{0}",repo.FullName);
+                }
             }
         }
 
@@ -69,6 +100,12 @@ namespace OctokitExample
         {
             var repos = await github.Repository.GetAllForCurrent();
             return repos.ToList();
+        }
+        public static async Task TransferRepoToOrg(GitHubClient github, Repository repo, string orgName)
+        {
+            Console.WriteLine("  --Transferring Repo: {0} --> To Org:{1}",repo.FullName,orgName);
+            var transfer = new RepositoryTransfer(orgName);
+            await github.Repository.Transfer(repo.Id, transfer);
         }
     }
 }
